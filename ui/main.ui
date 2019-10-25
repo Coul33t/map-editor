@@ -14,33 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QScrollArea" name="scrollArea_tileset">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>256</width>
-      <height>512</height>
-     </rect>
-    </property>
-    <property name="widgetResizable">
-     <bool>true</bool>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-    </property>
-    <widget class="QWidget" name="scrollAreaWidgetContents_tileset">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>254</width>
-       <height>510</height>
-      </rect>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QScrollArea" name="scrollArea_map">
+   <widget class="QGraphicsView" name="graphicsView_map">
     <property name="geometry">
      <rect>
       <x>280</x>
@@ -49,22 +23,16 @@
       <height>512</height>
      </rect>
     </property>
-    <property name="widgetResizable">
-     <bool>true</bool>
+   </widget>
+   <widget class="QGraphicsView" name="graphicsView_tileset">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>256</width>
+      <height>512</height>
+     </rect>
     </property>
-    <property name="alignment">
-     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-    </property>
-    <widget class="QWidget" name="scrollAreaWidgetContents_map">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>510</width>
-       <height>510</height>
-      </rect>
-     </property>
-    </widget>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
