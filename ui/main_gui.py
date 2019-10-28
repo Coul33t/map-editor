@@ -72,6 +72,20 @@ class Ui_MainWindow(object):
         self.pushButton_map_size = QtWidgets.QPushButton(self.groupBox_map_size)
         self.pushButton_map_size.setGeometry(QtCore.QRect(10, 80, 93, 28))
         self.pushButton_map_size.setObjectName("pushButton_map_size")
+        self.groupBox_layers = QtWidgets.QGroupBox(self.centralwidget)
+        self.groupBox_layers.setGeometry(QtCore.QRect(420, 530, 120, 111))
+        self.groupBox_layers.setObjectName("groupBox_layers")
+        self.checkBox_only_display_layer = QtWidgets.QCheckBox(self.groupBox_layers)
+        self.checkBox_only_display_layer.setGeometry(QtCore.QRect(10, 80, 16, 21))
+        self.checkBox_only_display_layer.setText("")
+        self.checkBox_only_display_layer.setObjectName("checkBox_only_display_layer")
+        self.label_only_display_layer = QtWidgets.QLabel(self.groupBox_layers)
+        self.label_only_display_layer.setGeometry(QtCore.QRect(40, 70, 71, 41))
+        self.label_only_display_layer.setWordWrap(True)
+        self.label_only_display_layer.setObjectName("label_only_display_layer")
+        self.spinBox_current_layer = QtWidgets.QSpinBox(self.groupBox_layers)
+        self.spinBox_current_layer.setGeometry(QtCore.QRect(10, 20, 42, 22))
+        self.spinBox_current_layer.setObjectName("spinBox_current_layer")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1087, 26))
@@ -104,6 +118,8 @@ class Ui_MainWindow(object):
         self.label_map_width.setText(_translate("MainWindow", "Width"))
         self.label_map_height.setText(_translate("MainWindow", "Height"))
         self.pushButton_map_size.setText(_translate("MainWindow", "Change size"))
+        self.groupBox_layers.setTitle(_translate("MainWindow", "Layers"))
+        self.label_only_display_layer.setText(_translate("MainWindow", "Only display this layer"))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
         self.actionImport_tileset.setText(_translate("MainWindow", "Import tileset"))
         self.actionImport_map.setText(_translate("MainWindow", "Import map"))
@@ -122,6 +138,7 @@ class Ui_MainWindow(object):
 
     def hide_components(self):
         self.groupBox_map_size.hide()
+        self.groupBox_layers.hide()
         self.graphicsView_map.hide()
         self.graphicsView_tileset.hide()
 
@@ -160,6 +177,7 @@ class Ui_MainWindow(object):
 
         self.graphicsView_tileset.show()
         self.groupBox_map_size.show()
+        self.groupBox_layers.show()
 
 
     def split_tileset(self):
