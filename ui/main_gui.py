@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image, ImageQt
 from math import floor
 
-# TODO: map to array (add to array when putting new tile)
+# TODO: map to array (add to array when putting new tile) -> Numpy array (WxHxLayers)
 #       multiple layers for map drawing (at least 3)
 #       obstacle layer, etc.
 class Ui_MainWindow(object):
@@ -216,12 +216,18 @@ class Ui_MainWindow(object):
         self.selected_tile = self.all_tiles[int(y / self.tile_size[1])][int(x / self.tile_size[0])]
 
 
-    def add_tile_on_map(self, event):
+    def add_tile_on_map(self, event, layer=0):
+        # TODO: add layers
         x = floor(event.scenePos().x() / self.tile_size[0]) * self.tile_size[0]
         y = floor(event.scenePos().y() / self.tile_size[1]) * self.tile_size[1]
 
         if x >= self.map_canvas_size[0] or y >= self.map_canvas_size[1]:
             return
+
+        tile_to_delete = self.graphicsScene_map.itemAt(x, y, QtGui.QTransform())
+
+        if tile_to_delete:
+            self.graphicsScene_map.removeItem(tile_to_delete)
 
         new_tile = self.graphicsScene_map.addPixmap(self.selected_tile.copy())
         new_tile.setPos(x, y)
