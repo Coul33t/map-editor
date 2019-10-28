@@ -11,11 +11,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image, ImageQt
 from math import floor
 
-# TODO: drag and draw (use mouseevents, pressed, set bool, then in draw function)
-# Use mouse events
-# look for pressed, set bool to true
-# if release, set bool to false
-# In draw function, if mouse moved (map coordinates), draw new tile
+# TODO: map to array (add to array when putting new tile)
+#       multiple layers for map drawing (at least 3)
+#       obstacle layer, etc.
 class Ui_MainWindow(object):
     def __init__(self):
         self.graphicsScene_tileset = QtWidgets.QGraphicsScene()
