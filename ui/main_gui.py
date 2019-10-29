@@ -11,9 +11,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PIL import Image, ImageQt
 from math import floor
 
-# TODO: map to array (add to array when putting new tile) -> Numpy array (WxHxLayers)
-#       multiple layers for map drawing (at least 3)
+import numpy as np
+
+DEBUG = True
+
+# TODO: draggable area in tileset to multidraw
 #       obstacle layer, etc.
+
 class Ui_MainWindow(object):
     def __init__(self):
         self.graphicsScene_tileset = QtWidgets.QGraphicsScene()
@@ -26,6 +30,7 @@ class Ui_MainWindow(object):
 
         self.all_tiles = []
         self.selected_tile = None
+        self.selected_tile_coord = (-1,-1)
 
         self.tileset_overlay_img = Image.open('selected_tile_overlay_small.png').convert('RGBA')
         self.tileset_overlay_pixmap = None
@@ -37,6 +42,13 @@ class Ui_MainWindow(object):
 
         self.last_coordinates = [-1, -1]
         self.map_canvas_size = [-1, -1]
+
+        self.current_layer = 0
+        self.number_of_layers = 5
+
+        self.map_as_array = None
+
+        self.remove_mode = False
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -73,7 +85,7 @@ class Ui_MainWindow(object):
         self.pushButton_map_size.setGeometry(QtCore.QRect(10, 80, 93, 28))
         self.pushButton_map_size.setObjectName("pushButton_map_size")
         self.groupBox_layers = QtWidgets.QGroupBox(self.centralwidget)
-        self.groupBox_layers.setGeometry(QtCore.QRect(420, 530, 120, 111))
+        self.groupBox_layers.setGeometry(QtCore.QRect(420, 530, 161, 111))
         self.groupBox_layers.setObjectName("groupBox_layers")
         self.checkBox_only_display_layer = QtWidgets.QCheckBox(self.groupBox_layers)
         self.checkBox_only_display_layer.setGeometry(QtCore.QRect(10, 80, 16, 21))
@@ -86,6 +98,11 @@ class Ui_MainWindow(object):
         self.spinBox_current_layer = QtWidgets.QSpinBox(self.groupBox_layers)
         self.spinBox_current_layer.setGeometry(QtCore.QRect(10, 20, 42, 22))
         self.spinBox_current_layer.setObjectName("spinBox_current_layer")
+        self.spinBox_current_layer.setMinimum(0)
+        self.spinBox_current_layer.setMaximum(self.number_of_layers)
+        self.pushButton_clear_layer = QtWidgets.QPushButton(self.groupBox_layers)
+        self.pushButton_clear_layer.setGeometry(QtCore.QRect(60, 20, 93, 28))
+        self.pushButton_clear_layer.setObjectName("pushButton_clear_layer")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1087, 26))
@@ -120,6 +137,7 @@ class Ui_MainWindow(object):
         self.pushButton_map_size.setText(_translate("MainWindow", "Change size"))
         self.groupBox_layers.setTitle(_translate("MainWindow", "Layers"))
         self.label_only_display_layer.setText(_translate("MainWindow", "Only display this layer"))
+        self.pushButton_clear_layer.setText(_translate("MainWindow", "Clear layer"))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
         self.actionImport_tileset.setText(_translate("MainWindow", "Import tileset"))
         self.actionImport_map.setText(_translate("MainWindow", "Import map"))
@@ -129,6 +147,9 @@ class Ui_MainWindow(object):
         self.graphicsView_map.setScene(self.graphicsScene_map)
         self.graphicsView_tileset.setScene(self.graphicsScene_tileset)
         self.pushButton_map_size.clicked.connect(self.change_map_size)
+        self.spinBox_current_layer.valueChanged.connect(self.change_layer)
+        self.checkBox_only_display_layer.stateChanged.connect(self.draw_map)
+        self.pushButton_clear_layer.clicked.connect(self.clear_layer)
 
         self.graphicsScene_tileset.mousePressEvent = self.select_tile
 
@@ -177,7 +198,6 @@ class Ui_MainWindow(object):
 
         self.graphicsView_tileset.show()
         self.groupBox_map_size.show()
-        self.groupBox_layers.show()
 
 
     def split_tileset(self):
@@ -210,14 +230,15 @@ class Ui_MainWindow(object):
 
         self.map_canvas_size = [width * self.tile_size[0], height * self.tile_size[1]]
 
+        self.map_as_array = np.zeros((height, width, self.number_of_layers), dtype=('int', 2)) - 1
+
         new_canvas = QtGui.QPixmap(self.map_canvas_size[0], self.map_canvas_size[1])
         new_canvas.fill(QtGui.QColor(255, 255, 255, 255))
         self.graphicsScene_map.addPixmap(new_canvas)
         self.graphicsScene_map.setSceneRect(0, 0, self.map_canvas_size[0], self.map_canvas_size[1])
 
         self.graphicsView_map.show()
-
-
+        self.groupBox_layers.show()
 
     def import_map(self):
         pass
@@ -226,30 +247,75 @@ class Ui_MainWindow(object):
         if self.tileset is None:
             return
 
-        x = floor(event.scenePos().x() / self.tile_size[0]) * self.tile_size[0]
-        y = floor(event.scenePos().y() / self.tile_size[1]) * self.tile_size[1]
+        # Grid coordinates
+        x = int(floor(event.scenePos().x() / self.tile_size[0]))
+        y = int(floor(event.scenePos().y() / self.tile_size[1]))
 
-        self.tileset_overlay_pixmap.setPos(x, y)
+        self.selected_tile = self.all_tiles[y][x]
+        self.selected_tile_coord = (x, y)
 
-        self.selected_tile = self.all_tiles[int(y / self.tile_size[1])][int(x / self.tile_size[0])]
+        # Pixel coordinates
+        self.tileset_overlay_pixmap.setPos(x * self.tile_size[0], y * self.tile_size[1])
 
 
-    def add_tile_on_map(self, event, layer=0):
-        # TODO: add layers
+    def change_layer(self):
+        """
+            Used to avoid querying the spinBox value for every drawing.
+        """
+        self.current_layer = self.spinBox_current_layer.value()
+
+    def add_tile_on_map(self, event):
+        # Grid coordinates
         x = floor(event.scenePos().x() / self.tile_size[0]) * self.tile_size[0]
         y = floor(event.scenePos().y() / self.tile_size[1]) * self.tile_size[1]
 
         if x >= self.map_canvas_size[0] or y >= self.map_canvas_size[1]:
             return
 
+        x_grid = int(x / self.tile_size[0])
+        y_grid = int(y / self.tile_size[1])
+
+        self.map_as_array[x_grid, y_grid, self.current_layer] = [self.selected_tile_coord[0],
+                                                                 self.selected_tile_coord[1]]
+
+        # Redraws
         tile_to_delete = self.graphicsScene_map.itemAt(x, y, QtGui.QTransform())
 
         if tile_to_delete:
             self.graphicsScene_map.removeItem(tile_to_delete)
 
-        new_tile = self.graphicsScene_map.addPixmap(self.selected_tile.copy())
-        new_tile.setPos(x, y)
+        self.draw_map()
 
+    def draw_map(self):
+        self.graphicsScene_map.clear()
+
+        if self.checkBox_only_display_layer.isChecked():
+            for i in range(len(self.map_as_array)):
+                for j in range(len(self.map_as_array[0])):
+                    tiles_coordinates = self.map_as_array[i][j][self.current_layer]
+                    if tiles_coordinates[0] >= 0 and tiles_coordinates[1] >= 0:
+                        new_tile = self.graphicsScene_map.addPixmap(self.all_tiles[tiles_coordinates[1]][tiles_coordinates[0]].copy())
+                        new_tile.setPos(i * self.tile_size[0], j * self.tile_size[1])
+
+        else:
+            for i in range(len(self.map_as_array)):
+                for j in range(len(self.map_as_array[0])):
+                    for k in range(self.number_of_layers):
+                        tiles_coordinates = self.map_as_array[i][j][k]
+                        if tiles_coordinates[0] >= 0 and tiles_coordinates[1] >= 0:
+                            new_tile = self.graphicsScene_map.addPixmap(self.all_tiles[tiles_coordinates[1]][tiles_coordinates[0]].copy())
+                            new_tile.setPos(i * self.tile_size[0], j * self.tile_size[1])
+
+    def clear_layer(self):
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Warning)
+        msg.setText(f"Are you sure you want to delete layer {self.current_layer}? There's no turning back.")
+        msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        ret = msg.exec_()
+
+        if ret == QtWidgets.QMessageBox.Ok:
+            self.map_as_array[:,:,self.current_layer] = [-1,-1]
+            self.draw_map()
 
     def mouse_pressed(self, event):
         self.is_dragging = True
