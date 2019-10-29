@@ -30,7 +30,7 @@ class Ui_MainWindow(object):
 
         self.all_tiles = []
         self.selected_tile = None
-        self.selected_tile_coord = (-1,-1)
+        self.selected_tile_coord = (-1, -1)
 
         self.tileset_overlay_img = Image.open('selected_tile_overlay_small.png').convert('RGBA')
         self.tileset_overlay_pixmap = None
@@ -57,7 +57,7 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.graphicsView_map = QtWidgets.QGraphicsView(self.centralwidget)
         self.graphicsView_map.setGeometry(QtCore.QRect(280, 10, 512, 512))
-        self.graphicsView_map.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
+        self.graphicsView_map.setAlignment(QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         self.graphicsView_map.setObjectName("graphicsView_map")
         self.graphicsView_tileset = QtWidgets.QGraphicsView(self.centralwidget)
         self.graphicsView_tileset.setGeometry(QtCore.QRect(10, 10, 256, 512))
