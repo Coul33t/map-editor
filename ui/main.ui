@@ -142,8 +142,8 @@
     <widget class="QCheckBox" name="checkBox_only_display_layer">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>80</y>
+       <x>60</x>
+       <y>20</y>
        <width>16</width>
        <height>21</height>
       </rect>
@@ -155,8 +155,8 @@
     <widget class="QLabel" name="label_only_display_layer">
      <property name="geometry">
       <rect>
-       <x>40</x>
-       <y>70</y>
+       <x>80</x>
+       <y>10</y>
        <width>71</width>
        <height>41</height>
       </rect>
@@ -181,14 +181,53 @@
     <widget class="QPushButton" name="pushButton_clear_layer">
      <property name="geometry">
       <rect>
-       <x>60</x>
-       <y>20</y>
+       <x>10</x>
+       <y>80</y>
        <width>93</width>
        <height>28</height>
       </rect>
      </property>
      <property name="text">
       <string>Clear layer</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QGroupBox" name="groupBox_drawing">
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>530</y>
+      <width>201</width>
+      <height>111</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>Drawing</string>
+    </property>
+    <widget class="QRadioButton" name="radioButton_paint">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>20</y>
+       <width>95</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Paint</string>
+     </property>
+    </widget>
+    <widget class="QRadioButton" name="radioButton_fill">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>40</y>
+       <width>95</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Fill</string>
      </property>
     </widget>
    </widget>

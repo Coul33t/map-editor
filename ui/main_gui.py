@@ -50,6 +50,8 @@ class Ui_MainWindow(object):
 
         self.remove_mode = False
 
+        self.drawing_style = 'paint'
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1087, 849)
@@ -103,6 +105,15 @@ class Ui_MainWindow(object):
         self.pushButton_clear_layer = QtWidgets.QPushButton(self.groupBox_layers)
         self.pushButton_clear_layer.setGeometry(QtCore.QRect(60, 20, 93, 28))
         self.pushButton_clear_layer.setObjectName("pushButton_clear_layer")
+        self.groupBox_drawing = QtWidgets.QGroupBox(self.centralwidget)
+        self.groupBox_drawing.setGeometry(QtCore.QRect(590, 530, 201, 111))
+        self.groupBox_drawing.setObjectName("groupBox_drawing")
+        self.radioButton_paint = QtWidgets.QRadioButton(self.groupBox_drawing)
+        self.radioButton_paint.setGeometry(QtCore.QRect(10, 20, 95, 20))
+        self.radioButton_paint.setObjectName("radioButton_paint")
+        self.radioButton_fill = QtWidgets.QRadioButton(self.groupBox_drawing)
+        self.radioButton_fill.setGeometry(QtCore.QRect(10, 40, 95, 20))
+        self.radioButton_fill.setObjectName("radioButton_fill")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1087, 26))
@@ -138,6 +149,9 @@ class Ui_MainWindow(object):
         self.groupBox_layers.setTitle(_translate("MainWindow", "Layers"))
         self.label_only_display_layer.setText(_translate("MainWindow", "Only display this layer"))
         self.pushButton_clear_layer.setText(_translate("MainWindow", "Clear layer"))
+        self.groupBox_drawing.setTitle(_translate("MainWindow", "Drawing"))
+        self.radioButton_paint.setText(_translate("MainWindow", "Paint"))
+        self.radioButton_fill.setText(_translate("MainWindow", "Fill"))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
         self.actionImport_tileset.setText(_translate("MainWindow", "Import tileset"))
         self.actionImport_map.setText(_translate("MainWindow", "Import map"))
@@ -151,6 +165,9 @@ class Ui_MainWindow(object):
         self.checkBox_only_display_layer.stateChanged.connect(self.draw_map)
         self.pushButton_clear_layer.clicked.connect(self.clear_layer)
 
+        self.radioButton_paint.toggled.connect(lambda:self.change_drawing_style(self.radioButton_paint))
+        self.radioButton_fill.toggled.connect(lambda:self.change_drawing_style(self.radioButton_fill))
+
         self.graphicsScene_tileset.mousePressEvent = self.select_tile
 
         self.graphicsScene_map.mousePressEvent = self.mouse_pressed
@@ -160,6 +177,7 @@ class Ui_MainWindow(object):
     def hide_components(self):
         self.groupBox_map_size.hide()
         self.groupBox_layers.hide()
+        self.groupBox_drawing.hide()
         self.graphicsView_map.hide()
         self.graphicsView_tileset.hide()
 
@@ -239,6 +257,8 @@ class Ui_MainWindow(object):
 
         self.graphicsView_map.show()
         self.groupBox_layers.show()
+        self.groupBox_drawing.show()
+        self.radioButton_paint.setChecked(True)
 
     def import_map(self):
         pass
@@ -264,14 +284,19 @@ class Ui_MainWindow(object):
         """
         self.current_layer = self.spinBox_current_layer.value()
 
+    def change_drawing_style(self, button):
+        if button.text() == 'Paint':
+            self.drawing_style = 'paint'
+        elif button.text() == 'Fill':
+            self.drawing_style = 'fill'
+
     def add_tile_on_map(self, event):
-        # Grid coordinates
         x = floor(event.scenePos().x() / self.tile_size[0]) * self.tile_size[0]
         y = floor(event.scenePos().y() / self.tile_size[1]) * self.tile_size[1]
 
         if x >= self.map_canvas_size[0] or y >= self.map_canvas_size[1]:
             return
-
+        # Grid coordinates
         x_grid = int(x / self.tile_size[0])
         y_grid = int(y / self.tile_size[1])
 
@@ -283,6 +308,55 @@ class Ui_MainWindow(object):
 
         if tile_to_delete:
             self.graphicsScene_map.removeItem(tile_to_delete)
+
+        self.draw_map()
+
+    def get_neighbors(self, origin, node_list):
+        nei = [(origin[0] - 1, origin[1]),
+               (origin[0] + 1, origin[1]),
+               (origin[0], origin[1] - 1),
+               (origin[0], origin[1] + 1)]
+
+        if set(nei) <= set(node_list):
+            return nei
+
+        return [x for x in nei if x in node_list]
+
+    def get_adjacent(self, x_origin, y_origin, original_tile):
+        final_tile_list = set()
+        visited_nodes = set()
+        queue = []
+        queue.append((x_origin, y_origin))
+        node_list = [(x, y) for x in range(floor(self.map_canvas_size[0] / self.tile_size[0])) for y in range(floor(self.map_canvas_size[1] / self.tile_size[1]))]
+
+        while queue:
+            node = queue.pop(0)
+            if (node not in visited_nodes
+            and np.array_equal(self.map_as_array[node[0], node[1], self.current_layer], original_tile)):
+                final_tile_list.add(node)
+                visited_nodes.add(node)
+
+                for neighbor in self.get_neighbors(node, node_list):
+                    if neighbor not in final_tile_list:
+                        queue.append(neighbor)
+
+        return final_tile_list
+
+
+    def fill_with_tile(self, event):
+
+        x = event.scenePos().x()
+        y = event.scenePos().y()
+
+        x_grid = floor(x / self.tile_size[0])
+        y_grid = floor(y / self.tile_size[1])
+
+        original_tile = self.map_as_array[x_grid, y_grid, self.current_layer]
+
+        tiles_to_fill = list(self.get_adjacent(x_grid, y_grid, original_tile))
+
+        for tile_to_paint in tiles_to_fill:
+            self.map_as_array[tile_to_paint[0], tile_to_paint[1], self.current_layer] = self.selected_tile_coord
 
         self.draw_map()
 
@@ -318,16 +392,29 @@ class Ui_MainWindow(object):
             self.draw_map()
 
     def mouse_pressed(self, event):
-        self.is_dragging = True
-        self.add_tile_on_map(event)
+        if self.drawing_style == 'paint':
+            self.is_dragging = True
+            self.add_tile_on_map(event)
+
+        elif self.drawing_style == 'fill':
+            self.fill_with_tile(event)
 
 
     def mouse_released(self, event):
-        self.is_dragging = False
-        self.last_coordinates = [-1, -1]
+        if self.drawing_style == 'paint':
+            self.is_dragging = False
+            self.last_coordinates = [-1, -1]
 
     def mouse_moved(self, event):
         if not self.is_dragging:
+            return
+
+        # No need to do the rest of the function if the mouse isn't in the map
+        if event.scenePos().x() > self.map_canvas_size[0] or event.scenePos().y() > self.map_canvas_size[1]:
+            return
+
+        # For now, this function is only used to paint
+        if self.drawing_style != 'paint':
             return
 
         x = floor(event.scenePos().x() / self.tile_size[0])
