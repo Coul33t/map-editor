@@ -38,9 +38,12 @@ class Ui_MainWindow(object):
         self.map_overlay_img = Image.open('map_overlay_small.png').convert('RGBA')
         self.map_overlay_pixmap = None
 
-        self.is_dragging = False
+        self.is_dragging_map = False
 
-        self.last_coordinates = [-1, -1]
+        self.last_coordinates_map = [-1, -1]
+        self.last_coordinates_tileset = [-1, -1]
+        self.origin_of_draggin_tileset = [-1, -1]
+        self.tileset_selection_size = [1, 1]
         self.map_canvas_size = [-1, -1]
 
         self.current_layer = 0
@@ -165,14 +168,16 @@ class Ui_MainWindow(object):
         self.checkBox_only_display_layer.stateChanged.connect(self.draw_map)
         self.pushButton_clear_layer.clicked.connect(self.clear_layer)
 
-        self.radioButton_paint.toggled.connect(lambda:self.change_drawing_style(self.radioButton_paint))
-        self.radioButton_fill.toggled.connect(lambda:self.change_drawing_style(self.radioButton_fill))
+        self.radioButton_paint.toggled.connect(lambda: self.change_drawing_style(self.radioButton_paint))
+        self.radioButton_fill.toggled.connect(lambda: self.change_drawing_style(self.radioButton_fill))
 
-        self.graphicsScene_tileset.mousePressEvent = self.select_tile
+        self.graphicsScene_map.mousePressEvent = self.mouse_pressed_map
+        self.graphicsScene_map.mouseReleaseEvent = self.mouse_released_map
+        self.graphicsScene_map.mouseMoveEvent = self.mouse_moved_map
 
-        self.graphicsScene_map.mousePressEvent = self.mouse_pressed
-        self.graphicsScene_map.mouseReleaseEvent = self.mouse_released
-        self.graphicsScene_map.mouseMoveEvent = self.mouse_moved
+        self.graphicsScene_tileset.mousePressEvent = self.mouse_pressed_tileset
+        self.graphicsScene_tileset.mouseReleaseEvent = self.mouse_released_tileset
+        self.graphicsScene_tileset.mouseMoveEvent = self.mouse_moved_tileset
 
     def hide_components(self):
         self.groupBox_map_size.hide()
@@ -268,14 +273,21 @@ class Ui_MainWindow(object):
             return
 
         # Grid coordinates
-        x = int(floor(event.scenePos().x() / self.tile_size[0]))
-        y = int(floor(event.scenePos().y() / self.tile_size[1]))
+        x_grid = int(floor(event.scenePos().x() / self.tile_size[0]))
+        y_grid = int(floor(event.scenePos().y() / self.tile_size[1]))
 
-        self.selected_tile = self.all_tiles[y][x]
-        self.selected_tile_coord = (x, y)
+        # THIS IS A TEMP FIX UNTIL THE SELECTION RECT IS PROPERLY HANDLED
+        try:
+            self.selected_tile = self.all_tiles[y_grid][x_grid]
+        except IndexError:
+            x_grid = int(floor(self.last_coordinates_tileset[0] / self.tile_size[0]))
+            y_grid = int(floor(self.last_coordinates_tileset[1] / self.tile_size[1]))
+            self.selected_tile = self.all_tiles[y_grid][x_grid]
+
+        self.selected_tile_coord = (x_grid, y_grid)
 
         # Pixel coordinates
-        self.tileset_overlay_pixmap.setPos(x * self.tile_size[0], y * self.tile_size[1])
+        self.tileset_overlay_pixmap.setPos(x_grid * self.tile_size[0], y_grid * self.tile_size[1])
 
 
     def change_layer(self):
@@ -299,6 +311,8 @@ class Ui_MainWindow(object):
         # Grid coordinates
         x_grid = int(x / self.tile_size[0])
         y_grid = int(y / self.tile_size[1])
+
+        #TODO: take into account the size of the selection
 
         self.map_as_array[x_grid, y_grid, self.current_layer] = [self.selected_tile_coord[0],
                                                                  self.selected_tile_coord[1]]
@@ -345,6 +359,9 @@ class Ui_MainWindow(object):
 
     def fill_with_tile(self, event):
 
+        if self.tileset_selection_size != [1, 1]:
+            return
+
         x = event.scenePos().x()
         y = event.scenePos().y()
 
@@ -388,25 +405,26 @@ class Ui_MainWindow(object):
         ret = msg.exec_()
 
         if ret == QtWidgets.QMessageBox.Ok:
-            self.map_as_array[:,:,self.current_layer] = [-1,-1]
+            self.map_as_array[:, :, self.current_layer] = [-1,-1]
             self.draw_map()
 
-    def mouse_pressed(self, event):
+    def mouse_pressed_map(self, event):
         if self.drawing_style == 'paint':
-            self.is_dragging = True
+            self.is_dragging_map = True
             self.add_tile_on_map(event)
 
         elif self.drawing_style == 'fill':
             self.fill_with_tile(event)
 
 
-    def mouse_released(self, event):
+    def mouse_released_map(self, event):
         if self.drawing_style == 'paint':
-            self.is_dragging = False
-            self.last_coordinates = [-1, -1]
+            self.is_dragging_map = False
+            self.last_coordinates_map = [-1, -1]
 
-    def mouse_moved(self, event):
-        if not self.is_dragging:
+
+    def mouse_moved_map(self, event):
+        if not self.is_dragging_map:
             return
 
         # No need to do the rest of the function if the mouse isn't in the map
@@ -417,12 +435,78 @@ class Ui_MainWindow(object):
         if self.drawing_style != 'paint':
             return
 
-        x = floor(event.scenePos().x() / self.tile_size[0])
-        y = floor(event.scenePos().y() / self.tile_size[1])
+        x_grid = floor(event.scenePos().x() / self.tile_size[0])
+        y_grid = floor(event.scenePos().y() / self.tile_size[1])
 
-        if x != self.last_coordinates[0] or y != self.last_coordinates[1]:
+        if x_grid != self.last_coordinates_map[0] or y_grid != self.last_coordinates_map[1]:
             self.add_tile_on_map(event)
-            self.last_coordinates = [x, y]
+            self.last_coordinates_map = [x_grid, y_grid]
+
+
+    def mouse_pressed_tileset(self, event):
+        self.is_dragging_tileset = True
+        x_grid = floor(event.scenePos().x() / self.tile_size[0])
+        y_grid = floor(event.scenePos().y() / self.tile_size[1])
+        self.origin_of_draggin_tileset = [x_grid, y_grid]
+
+
+    def mouse_released_tileset(self, event):
+        self.is_dragging_tileset = False
+        self.select_tile(event)
+
+
+    def mouse_moved_tileset(self, event):
+        if not self.is_dragging_tileset:
+            return
+
+        x_grid = floor(event.scenePos().x() / self.tile_size[0])
+        y_grid = floor(event.scenePos().y() / self.tile_size[1])
+
+        if x_grid != self.last_coordinates_tileset[0] or y_grid != self.last_coordinates_tileset[1]:
+            if self.last_coordinates_tileset != [-1, -1]:
+                if x_grid > self.last_coordinates_tileset[0]:
+                    self.tileset_selection_size[0] += 1
+                elif x_grid < self.last_coordinates_tileset[0]:
+                    self.tileset_selection_size[0] -= 1
+
+                if y_grid > self.last_coordinates_tileset[1]:
+                    self.tileset_selection_size[1] += 1
+                elif y_grid < self.last_coordinates_tileset[1]:
+                    self.tileset_selection_size[1] -= 1
+
+            # Selection would be 0 in width or height
+            if self.tileset_selection_size[0] < 1:
+                self.tileset_selection_size[0] = 1
+            if self.tileset_selection_size[1] < 1:
+                self.tileset_selection_size[1] = 1
+
+            # Selection would be too big for tileset in width or height
+            if self.tileset_selection_size[0] + self.origin_of_draggin_tileset[0] >= floor(self.tileset.width() / self.tile_size[0]):
+                self.tileset_selection_size[0] = int(floor(self.tileset.width() / self.tile_size[0]) - self.origin_of_draggin_tileset[0])
+            if self.tileset_selection_size[1] + self.origin_of_draggin_tileset[1] >= floor(self.tileset.height() / self.tile_size[1]):
+                self.tileset_selection_size[1] = int(floor(self.tileset.height() / self.tile_size[1]) - self.origin_of_draggin_tileset[1])
+
+            self.last_coordinates_tileset = [x_grid, y_grid]
+
+            self.redraw_selection_overlay(event)
+
+    def redraw_selection_overlay(self, event):
+        # Grid coordinates
+        x_grid = int(floor(self.origin_of_draggin_tileset[0] / self.tile_size[0]))
+        y_grid = int(floor(self.origin_of_draggin_tileset[0] / self.tile_size[1]))
+
+        self.selected_tile = self.all_tiles[y_grid][x_grid]
+        self.selected_tile_coord = (x_grid, y_grid)
+
+        self.graphicsScene_tileset.removeItem(self.tileset_overlay_pixmap)
+
+        self.tileset_overlay_pixmap = ImageQt.ImageQt(self.tileset_overlay_img.resize((self.tileset_selection_size[0] * self.tile_size[0],
+                                                                                       self.tileset_selection_size[1] * self.tile_size[1])))
+
+        self.tileset_overlay_pixmap = self.graphicsScene_tileset.addPixmap(QtGui.QPixmap.fromImage(self.tileset_overlay_pixmap))
+        self.tileset_overlay_pixmap.setPos(self.origin_of_draggin_tileset[0] * self.tile_size[0],
+                                           self.origin_of_draggin_tileset[1] * self.tile_size[1])
+
 
 
 if __name__ == "__main__":
