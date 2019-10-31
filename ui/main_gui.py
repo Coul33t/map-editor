@@ -242,15 +242,6 @@ class Ui_MainWindow(object):
         width = self.spinBox_map_width.value()
         height = self.spinBox_map_height.value()
 
-        # Should never happen since I forced the values to be in the range
-        # 1 - 999999
-        if width <= 0 or height <= 0:
-            msg = QtWidgets.QMessageBox()
-            msg.setIcon(QtWidgets.QMessageBox.Warning)
-            msg.setText(f"Error: Width or Height can't be 0 or less")
-            msg.exec_()
-            return
-
         self.map_canvas_size = [width * self.tile_size[0], height * self.tile_size[1]]
 
         self.map_as_array = np.zeros((height, width, self.number_of_layers), dtype=('int', 2)) - 1
